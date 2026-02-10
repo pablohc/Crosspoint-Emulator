@@ -92,9 +92,9 @@ Follow the steps for your operating system below. You need: a **C++17 compiler**
      cd ~/Desktop
      git clone https://github.com/crosspoint/crosspoint-emulator.git
      cd crosspoint-emulator
-     git clone https://github.com/crosspoint/Crosspoint.git ../Crosspoint
+     git clone https://github.com/crosspoint-reader/crosspoint-reader.git ../Crosspoint
      ```
-   - Replace `https://github.com/crosspoint/...` with your actual repo URLs if you use a fork.
+   - Replace with your fork URLs if different (Crosspoint firmware: `https://github.com/crosspoint-reader/crosspoint-reader`).
    - The **Crosspoint** repo must be a **sibling** of **crosspoint-emulator** (e.g. `Desktop/crosspoint-emulator` and `Desktop/Crosspoint`).
 
 8. **Build the emulator** (see [Building](#building)): from `crosspoint-emulator` run:
@@ -144,7 +144,7 @@ Follow the steps for your operating system below. You need: a **C++17 compiler**
      cd %USERPROFILE%\Desktop
      git clone https://github.com/crosspoint/crosspoint-emulator.git
      cd crosspoint-emulator
-     git clone https://github.com/crosspoint/Crosspoint.git ..\Crosspoint
+     git clone https://github.com/crosspoint-reader/crosspoint-reader.git ..\Crosspoint
      ```
    - Replace the URLs with your fork if needed. **Crosspoint** must be a **sibling** of **crosspoint-emulator**.
 
@@ -174,10 +174,10 @@ git clone https://github.com/crosspoint/crosspoint-emulator.git
 cd crosspoint-emulator
 
 # Clone Crosspoint as a sibling directory (required)
-git clone https://github.com/crosspoint/Crosspoint.git ../Crosspoint
+git clone https://github.com/crosspoint-reader/crosspoint-reader.git ../Crosspoint
 ```
 
-*(Use your actual repo URLs if different, e.g. `https://github.com/jonmooreai/Crosspoint-Emulator` and the matching Crosspoint repo.)*
+*(Use your fork URLs if different. Crosspoint firmware: `https://github.com/crosspoint-reader/crosspoint-reader`.)*
 
 ### Building SDL2 from Source
 
@@ -703,6 +703,51 @@ This section documents the major features and improvements added to the Crosspoi
 
 ## Troubleshooting
 
+### Common first-time build issues (e.g. after following Mac instructions)
+
+If you just cloned both repos and ran `cmake --build .` in `build/`, these fixes cover the most frequent problems:
+
+**1. Wrong or broken repo links**
+
+- **Symptom:** Clone fails, or you cloned the wrong repo and the build can’t find Crosspoint.
+- **Fix:** Use the correct Crosspoint firmware repo (required sibling of the emulator):
+  ```bash
+  cd ~/Desktop   # or wherever you have crosspoint-emulator
+  cd crosspoint-emulator
+  # Clone Crosspoint firmware as a sibling named "Crosspoint" (so CMake finds it by default)
+  git clone https://github.com/crosspoint-reader/crosspoint-reader.git ../Crosspoint
+  ```
+- If Crosspoint is somewhere else, point CMake at it when configuring:
+  ```bash
+  cd build
+  cmake .. -DCROSSPOINT_ROOT=/absolute/path/to/crosspoint-reader
+  ```
+
+**2. `fatal error: 'HalStorage.h' file not found`**
+
+- **Symptom:** Build fails with `'HalStorage.h' file not found` (or similar missing HAL header).
+- **Fix:** The emulator supplies stubs for device HAL headers (including `HalStorage.h`) in `sim/include/`. Make sure you have the latest emulator so that `sim/include/HalStorage.h` exists:
+  ```bash
+  cd ~/Desktop/crosspoint-emulator   # your emulator repo
+  git pull origin main               # or your default branch
+  cd build
+  cmake ..
+  cmake --build .
+  ```
+- If the file is present and you still get the error, do a clean reconfigure:
+  ```bash
+  cd build
+  rm -rf *
+  cmake ..
+  cmake --build .
+  ```
+- If your Crosspoint fork uses a different `HalStorage` API, you may need to edit `sim/include/HalStorage.h` in the emulator to match (the stub forwards to the SD card manager).
+
+**3. Build still fails after the above**
+
+- Confirm layout: from the emulator repo root, `../Crosspoint` should exist and contain Crosspoint source (e.g. `src/`, `lib/`).
+- See [Build Issues](#build-issues) below for CMake, SDL2, and other errors.
+
 ### Build Issues
 
 **CMake not found**:
@@ -730,7 +775,7 @@ pkg-config --modversion sdl2
 **Crosspoint repo not found**:
 ```bash
 # Ensure Crosspoint is cloned
-git clone https://github.com/your-org/Crosspoint.git ../Crosspoint
+git clone https://github.com/crosspoint-reader/crosspoint-reader.git ../Crosspoint
 
 # Or set CROSSPOINT_ROOT
 cmake .. -DCROSSPOINT_ROOT=/absolute/path/to/Crosspoint
@@ -739,6 +784,9 @@ cmake .. -DCROSSPOINT_ROOT=/absolute/path/to/Crosspoint
 **Compilation errors**:
 - Ensure C++17 compiler (check: `g++ --version` or `clang++ --version`)
 - Clean build: `rm -rf build && mkdir build && cd build && cmake ..`
+
+**`HalStorage.h` (or other HAL header) not found**:
+- See [Common first-time build issues](#common-first-time-build-issues-eg-after-following-mac-instructions) above for step-by-step fixes (pull latest emulator, clean rebuild, and when to edit the stub).
 
 ### Runtime Issues
 
@@ -959,4 +1007,4 @@ Thank you for helping improve Crosspoint Emulator!
 
 ## Acknowledgments
 
-Built on top of the [Crosspoint](https://github.com/crosspoint/crosspoint) e-reader firmware project.
+Built on top of the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware project.
