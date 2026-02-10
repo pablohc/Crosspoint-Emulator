@@ -14,5 +14,5 @@
 <text x="190.0" y="195.0" style="font:14px system-ui, -apple-system, sans-serif;fill:#111;text-anchor:middle">loop()  → Main event loop</text>
 <line x1="190.0" y1="207" x2="190.0" y2="230" style="stroke:#333;stroke-width:1.5;fill:none" marker-end="url(#arrowhead)" />
 <rect x="40" y="230" width="300" height="28" style="fill:#fff;stroke:#333;stroke-width:1.5"/>
-<text x="190.0" y="248.0" style="font:14px system-ui, -apple-system, sans-serif;fill:#111;text-anchor:middle">sim_display_pump_events()  •  HalGPIO::update()  •  Activity::loop()  •  HalDisplay::displayBuffer()</text>
+<text x="190.0" y="248.0" style="font:14px system-ui, -apple-system, sans-serif;fill:#111;text-anchor:middle">prewarmStep()  •  sim_display_pump_events()  •  HalGPIO::update()  •  Activity::loop()  •  HalDisplay::displayBuffer()</text>
 </svg>

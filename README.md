@@ -363,7 +363,7 @@ mv sdcard/*.epub sdcard/Novels/
 
 ### Component Flow
 
-![Component flow: main() → sim_display_init, setup, loop → display and input](docs/diagrams/arch-component-flow.svg)
+![Component flow: main() → sim_display_init, setup, loop; each iteration: prewarmStep(), pump_events, loop(), display](docs/diagrams/arch-component-flow.svg)
 
 ### HAL Abstraction Layer
 
@@ -515,20 +515,20 @@ This section documents the major features and improvements added to the Crosspoi
 
 **Cache Location**: `/.crosspoint/epub_<hash>/thumb_<height>.bmp`
 
-**Background Prewarm**: Thumbnails are generated in a background thread at startup (non-blocking).
+**Prewarm**: Thumbnails are generated on the main thread, one EPUB per loop iteration (`prewarmStep()`), with yield points every 8 rows in image conversion so the UI stays responsive and behavior matches the device.
 
 ### Performance Optimizations
 
-#### Thumbnail Prewarm (Non-Blocking)
+#### Thumbnail Prewarm (Main Thread, Device-Fidelity)
 
 **Previous**: Thumbnail generation blocked UI startup until all EPUBs were processed.
 
-**New**: Thumbnails prewarm in a **detached background thread**:
-- UI is interactive immediately after boot
-- Thumbnails appear as they're generated
-- No blocking of main event loop
+**Current**: Prewarm runs on the **main thread**, one EPUB per frame:
+- Each loop iteration runs `prewarmStep()` (one EPUB), then `sim_display_pump_events()`, then `loop()`
+- Image conversion yields every 8 rows so the UI gets control during long thumbnails
+- UI stays responsive; behavior matches the real device (single core, no background thread)
 
-**Implementation**: `main_sim.cpp` launches `prewarmLibraryEpubThumbs()` thread after `setup()`.
+**Implementation**: `main_sim.cpp` runs `prewarmStep()` at the start of each main-loop iteration; image conversion in `image_to_bmp.cpp` calls `yield()` every 8 rows.
 
 #### Framebuffer Rendering Optimization
 
@@ -651,7 +651,7 @@ This section documents the major features and improvements added to the Crosspoi
 
 - Data preparation (metadata, progress labels) separate from rendering
 - Pure helper functions preferred
-- Background threads for expensive operations
+- Expensive work (e.g. thumbnail prewarm) is chunked and yields so the main loop stays responsive
 
 ---
 
@@ -813,7 +813,7 @@ cmake .. -DCROSSPOINT_ROOT=/absolute/path/to/Crosspoint
 **Thumbnails not generating**:
 - Check cache directory: `ls -la .crosspoint/`
 - Verify EPUB files are valid: try opening in another reader
-- Check background thread logs in terminal
+- Check terminal for [SIM] prewarm messages
 
 ### Performance Issues
 
@@ -840,8 +840,7 @@ cmake .. -DCROSSPOINT_ROOT=/absolute/path/to/Crosspoint
 **`sim/src/main_sim.cpp`**:
 - Entry point (`main()`)
 - Initializes SDL2 display
-- Calls Crosspoint `setup()` and `loop()`
-- Launches thumbnail prewarm thread
+- Calls Crosspoint `setup()`, then each loop iteration: `prewarmStep()`, `sim_display_pump_events()`, `loop()`
 
 **`sim/src/sim_display.cpp`**:
 - SDL2 window management
@@ -903,7 +902,7 @@ These rules apply to every change in both the emulator and Crosspoint repos:
 3. **Open/closed** — Extend by adding new constants or theme methods; don't modify existing signatures without updating every call site.
 4. **Composition over inheritance** — Theme drawing is virtual-dispatch on `BaseTheme`; activities compose input + render behavior without deep inheritance trees.
 5. **Minimize side effects** — Data preparation (metadata, progress labels) is separate from rendering. Pure helper functions preferred.
-6. **Performance budget** — No blocking work on the main loop. Expensive operations (thumbnail generation, EPUB parsing) run in background threads or lazily.
+6. **Performance budget** — No blocking work on the main loop. Expensive operations are chunked (e.g. one EPUB per frame for prewarm, yields in image conversion) or done lazily so the main loop stays responsive.
 
 ### Shared Constants Location
 
@@ -922,7 +921,7 @@ These rules apply to every change in both the emulator and Crosspoint repos:
 
 ### Performance Rules
 
-- **Thumbnail prewarm** runs in a detached background thread (`main_sim.cpp`), never blocking the UI loop.
+- **Thumbnail prewarm** runs on the main thread (`main_sim.cpp`), one EPUB per frame with yields in image conversion, so the UI loop stays responsive and behavior matches the device.
 - **Framebuffer-to-texture** processes bytes (8 pixels at a time), not individual bits (`sim_display.cpp`).
 - **Grayscale rendering** uses a precomputed LUT instead of per-pixel branching.
 - **Image conversion** stack-allocates ditherers and uses `memset` for row clearing instead of `std::fill` or heap allocation.
@@ -958,7 +957,7 @@ When the Crosspoint HAL or `main.cpp` changes, the sim HAL in `sim/include/` and
 - Migrated 15+ `mapLabels()` call sites to use `UxLabel::` constants.
 
 **Performance**
-- Moved thumbnail prewarm from blocking startup to a detached background thread — UI is interactive immediately after boot.
+- Thumbnail prewarm runs on the main thread, one EPUB per frame with yields in image conversion — UI stays responsive and behavior matches the device (single core, no background thread).
 - Optimized `render_bw_to_texture`: processes framebuffer bytes (8 pixels at a time) instead of individual bit extraction, reducing loop iterations ~8x.
 - Optimized `render_gray_to_texture`: uses a precomputed 8-entry LUT for grayscale mapping instead of per-pixel conditional branching.
 - Eliminated heap allocation in image converter: ditherers are now stack-allocated; row clearing uses `memset`.

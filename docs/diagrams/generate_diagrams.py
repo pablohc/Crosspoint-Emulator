@@ -74,9 +74,9 @@ def gen_component_flow():
         box(svg, 40, y, w - 80, 32, label)
         if i < 2:
             arrow_down(svg, cx, y + 32, y + 48)
-    # Loop children
+    # Loop body (each iteration): prewarmStep, then pump_events, loop, display
     arrow_down(svg, cx, 207, 230)
-    box(svg, 40, 230, w - 80, 28, "sim_display_pump_events()  •  HalGPIO::update()  •  Activity::loop()  •  HalDisplay::displayBuffer()")
+    box(svg, 40, 230, w - 80, 28, "prewarmStep()  •  sim_display_pump_events()  •  HalGPIO::update()  •  Activity::loop()  •  HalDisplay::displayBuffer()")
     return "\n".join(svg) + "\n</svg>"
 
 
