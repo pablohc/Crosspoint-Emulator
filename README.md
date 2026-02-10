@@ -252,6 +252,7 @@ If you need to build SDL2 manually (e.g., from Downloads folder):
    # Should show the executable
    ```
 
+
 ### Optional: ArduinoJson Dependency
 
 If you want web server screens to compile (they're stubbed but won't crash):
@@ -380,7 +381,32 @@ The Hardware Abstraction Layer (HAL) provides a consistent interface between Cro
 
 ### Threading Model
 
-![Thread architecture: Main thread (UI loop) and background thread (thumbnail prewarm)](docs/diagrams/arch-threading.svg)
+![Thread architecture: Single main thread (prewarm step + UI loop), matches device](docs/diagrams/arch-threading.svg)
+
+The emulator uses a **single main thread**, matching the real device: thumbnail prewarm runs one EPUB per frame with yield points in image generation, so the UI stays responsive. Display and SD access are serialized (shared SPI simulation). See [Real device vs emulator](#real-device-vs-emulator).
+
+### Real device vs emulator
+
+The emulator is built to **behave like the real device** so that timing, responsiveness, and I/O contention match hardware.
+
+**Device hardware (reference)**:
+- **CPU**: ESP32 (e.g. ESP32-C3), 160 MHz single core
+- **RAM**: 128 MB
+- **Storage**: 32 GB microSD included; expansion up to 512 GB supported
+
+**Emulator behavior (matches device)**:
+
+| Aspect | Real device | Emulator |
+|--------|-------------|----------|
+| **CPU** | Single core: thumbnail generation and UI share one core; yields in image code so the UI can respond. | Single main thread: prewarm runs one EPUB per frame; image conversion yields every 8 rows. |
+| **SPI bus** | Display and SD card share one SPI bus; display update and file I/O cannot run concurrently. | Display and SD file I/O use a shared mutex so they are serialized. |
+
+**How the emulator addresses single-core and shared-SPI behavior**
+
+- **Single core:** The emulator does not use a background thread for thumbnail generation. Prewarm runs on the main thread, one EPUB per main-loop iteration, so the UI (event pump and `loop()`) runs between thumbnails. Inside image conversion (e.g. scaling and dithering to BMP), the emulator yields every 8 rows so that even during a single thumbnail the UI can get control. That matches the need to share one 160 MHz core between image work and the UI on the real device.
+- **Shared SPI:** On hardware, the display and SD card share one SPI bus, so doing file I/O while the display is updating (or the reverse) is unsafe. The emulator simulates that constraint by serializing all display updates and all SD file operations behind a single mutex: no display transfer and no file read/write run at the same time. The same approach—a shared lock or policy that prevents concurrent display and SD use of the bus—can be applied in the device firmware.
+
+The emulator’s image conversion and SPI handling live in the sim HAL (`image_to_bmp.cpp`, `sim_spi_bus`, `sim_display`, `sim_storage`). To get the same responsive UI and safe bus usage on the real device, the Crosspoint firmware can adopt the same patterns: periodic yields in the device’s thumbnail/image path and a single serialization point for SPI (display and SD) in the device HAL or drivers.
 
 ---
 
