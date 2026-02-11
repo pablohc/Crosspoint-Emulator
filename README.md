@@ -126,7 +126,7 @@ Follow the steps for your operating system below. You need: a **C++17 compiler**
    - Go to: **https://github.com/libsdl-org/SDL/releases**  
    - In the latest **SDL2** release (e.g. 2.30.x), download **`SDL2-devel-2.30.x-mingw.zip`** (MinGW) **or** the **Visual C++** development package if you use MSVC (e.g. `SDL2-devel-2.30.x-VC.zip`).
    - Extract the ZIP to a permanent folder, e.g. `C:\SDL2` — so you have `C:\SDL2\include`, `C:\SDL2\lib`, etc.
-   - Remember this path; you will pass it to CMake as `-DSDL2_ROOT=C:\SDL2` (see step 6).
+   - Remember this path; you will pass it to CMake as `-DSDL2_ROOT=C:\SDL2` (see step 7).
 
 4. **Install or verify Python 3**
    - Download from: **https://www.python.org/downloads/**  
@@ -147,9 +147,10 @@ Follow the steps for your operating system below. You need: a **C++17 compiler**
      git clone https://github.com/crosspoint-reader/crosspoint-reader.git ..\Crosspoint
      ```
    - Replace the URLs with your fork if needed. **Crosspoint** must be a **sibling** of **Crosspoint-Emulator**.
+   - **Verify:** You should now be in the **Crosspoint-Emulator** directory (e.g. `%USERPROFILE%\Desktop\Crosspoint-Emulator`). You should see `CMakeLists.txt`, `README.md`, and a `sim` folder. The **Crosspoint** repo should exist as a sibling folder (e.g. `..\Crosspoint` with `src`, `lib` inside).
 
 7. **Build the emulator**
-   - From the emulator folder (e.g. `Crosspoint-Emulator`):
+   - From the **Crosspoint-Emulator** directory (the directory from step 6):
      ```cmd
      mkdir build
      cd build
